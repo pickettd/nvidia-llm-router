@@ -282,6 +282,7 @@ The blueprint includes a variety of tools to help understand, evaluate, customiz
 - A sample client application is available in the `demo/app` folder.
 - Metrics are automatically collected and can be exported via Prometheus to Grafana. Details are available in the source README and an example is provided in the quickstart notebook.
 - A sample loadtest is available in the `demo/loadtest` folder with instructions in the associated README.
+- A pytest suite for testing against local OpenAI-compatible endpoints (e.g. Ollama) is available at `src/test_router_ollama.py`. It tests streaming, non-streaming, error handling, and parameter variations across multiple models without requiring Docker or the full router stack. Run it with `pytest src/test_router_ollama.py -v`. Use `--base-url` to point at the router controller or another endpoint. Pytest configuration shared across tests in `src/` lives in `src/conftest.py`.
 - The blueprint includes two default routing policies available for download from NGC. The `customize` directory includes two notebooks showing how each policy model was created. There is also an example notebook showing how to create a third policy. The `intent_router` is created by fine-tuning a model to classify prompts based on a user's intent, assuming they are interacting with a support chatbot at a bank.
 
 ## License 3<sup>rd</sup> Party
