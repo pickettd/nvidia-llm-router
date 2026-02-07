@@ -1,0 +1,52 @@
+policies:
+  - name: "task_router"
+    url: http://router-server:8000/v2/models/task_router_ensemble/infer
+    llms:
+      - name: Brainstorming
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3-vl:30b-a3b-instruct-q4_K_M
+      - name: Chatbot
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3:0.6b
+      - name: Classification
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3:0.6b
+      - name: Closed QA
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3-vl:30b-a3b-instruct-q4_K_M
+      - name: Code Generation
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: gemma3:1b
+      - name: Extraction
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3:0.6b
+      - name: Open QA
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3-vl:30b-a3b-instruct-q4_K_M
+      - name: Other
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3:0.6b
+      - name: Rewrite
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3:0.6b
+      - name: Summarization
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3-vl:30b-a3b-instruct-q4_K_M
+      - name: Text Generation
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3:0.6b
+      - name: Unknown
+        api_base: http://host.docker.internal:11434
+        api_key: ollama
+        model: qwen3:0.6b

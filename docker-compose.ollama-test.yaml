@@ -1,0 +1,15 @@
+services:
+
+  router-server:
+    build:
+      context: .
+      dockerfile: src/router-server/router-server-blackwell.dockerfile
+    image: router-server:blackwell
+
+  router-controller:
+    volumes:
+      - ./src/ollama_router_config.yaml:/app/config.yaml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - NVIDIA_API_KEY=ollama
