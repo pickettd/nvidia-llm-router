@@ -1,0 +1,24 @@
+services:
+
+  router-server:
+    build:
+      context: .
+      dockerfile: src/router-server/router-server-blackwell.dockerfile
+    image: router-server:blackwell
+    volumes:
+      - ./routers/:/model_repository
+      - ./routers-cpu-override/task_router/config.pbtxt:/model_repository/task_router/config.pbtxt:ro
+      - ./routers-cpu-override/task_router/model.pt:/model_repository/task_router/1/model.pt:ro
+      - ./routers-cpu-override/complexity_router/config.pbtxt:/model_repository/complexity_router/config.pbtxt:ro
+      - ./routers-cpu-override/complexity_router/model.pt:/model_repository/complexity_router/1/model.pt:ro
+    deploy:
+      resources:
+        reservations: {}
+
+  router-controller:
+    volumes:
+      - ./src/ollama_router_config.yaml:/app/config.yaml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - NVIDIA_API_KEY=ollama

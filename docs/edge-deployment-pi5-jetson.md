@@ -9,7 +9,7 @@ The router pipeline has three stages, each with different compute requirements:
 | Stage | Backend | Model Size | Compute |
 |-------|---------|-----------|---------|
 | Preprocessing (tokenization) | Python | ~500MB (DeBERTa-v2 tokenizer downloaded from HuggingFace at startup) | CPU only |
-| Classification (DeBERTa-v2) | PyTorch / libtorch | 702MB `.pt` file | GPU or CPU |
+| Classification (DeBERTa-v2) | PyTorch / libtorch | 702MB GPU / 352MB CPU `.pt` file | GPU or CPU |
 | Postprocessing (softmax → one-hot) | Python | Negligible | CPU only |
 
 The classification model is a DeBERTa-v2 transformer (~125M params). Total memory for one router policy: ~1.5GB (model weights + tokenizer + runtime overhead). Both `task_router` and `complexity_router` share the same architecture, so loading both requires ~3GB.
@@ -43,19 +43,24 @@ The Pi 5 has no NVIDIA GPU, so the entire pipeline must run on CPU. This is feas
 
 ### Model conversion (GPU → CPU)
 
-The pre-trained `.pt` files were traced on GPU and contain `cuda:0` tensors. Loading them with `KIND_CPU` in Triton fails with a device mismatch error. The models must be re-saved with CPU tensors:
+The pre-trained `.pt` files were traced on GPU with `torch.jit.trace()`. This bakes CUDA-specific operations into the computation graph — not just tensor data, but the actual ops. Using `torch.jit.load("model.pt", map_location="cpu")` only moves tensor data to CPU; the traced graph still contains CUDA kernel calls, causing runtime errors like:
 
-```python
-import torch
-
-# Convert task_router
-model = torch.jit.load("routers/task_router/1/model.pt", map_location="cpu")
-torch.jit.save(model, "routers/task_router/1/model.pt")
-
-# Convert complexity_router
-model = torch.jit.load("routers/complexity_router/1/model.pt", map_location="cpu")
-torch.jit.save(model, "routers/complexity_router/1/model.pt")
 ```
+Expected all tensors to be on the same device, but found at least two devices, cpu and cuda:0! (wrapper_CUDA_gather)
+```
+
+**The models must be re-traced on CPU from scratch.** The `scripts/retrace_cpu.py` script does this by loading the original model weights from HuggingFace and running `torch.jit.trace()` on CPU:
+
+```bash
+# Using the router-server Docker image (has all dependencies):
+docker run --rm \
+  -v ./routers-cpu-override:/out \
+  -v ./scripts/retrace_cpu.py:/app/retrace_cpu.py \
+  router-server:blackwell \
+  python /app/retrace_cpu.py
+```
+
+This produces CPU-traced `.pt` files (~352MB each, vs ~702MB for GPU-traced). Pre-built CPU models are stored in `routers-cpu-override/`.
 
 ### Triton config changes
 
@@ -73,7 +78,25 @@ instance_group [
 ]
 ```
 
-CPU override configs are already available in `routers-cpu-override/` for reference.
+CPU override configs and pre-built CPU models are in `routers-cpu-override/`.
+
+### CPU-only validation (x86_64)
+
+The CPU pipeline has been validated on x86_64 using the `docker-compose.cpu-test.yaml` override, which mounts the CPU configs and models over the GPU ones and removes GPU reservations:
+
+```bash
+# Start the CPU-only test stack:
+docker compose -f docker-compose.yaml -f docker-compose.cpu-test.yaml \
+  up router-server router-controller --build -d
+
+# Run the integration tests (all 12 pass):
+pytest src/test_router_integration.py -v
+
+# Tear down:
+docker compose -f docker-compose.yaml -f docker-compose.cpu-test.yaml down
+```
+
+Classification latency on CPU is ~2x slower than GPU (~22s total for 12 tests vs ~10s on Blackwell GPU), but the routing decisions are identical.
 
 ### Triton on ARM64 / Pi 5
 
@@ -108,7 +131,7 @@ Triton does not have official Raspberry Pi builds. Options:
 |---|---|---|
 | GPU inference | Yes (native) | No |
 | Triton support | Official Jetson containers | No official build; use alternative |
-| Model conversion needed | No | Yes (`map_location="cpu"`) |
+| Model conversion needed | No | Yes (re-trace on CPU) |
 | Classification latency | ~50-100ms | ~1-5s |
 | Recommended approach | Triton + Ollama on device | Lightweight Python server + ONNX Runtime |
 | Best for | Self-contained edge router | Low-cost routing with remote LLM fallback |

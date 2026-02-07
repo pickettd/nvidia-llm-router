@@ -4,6 +4,8 @@ app/.env
 models
 src/router-controller/target/
 routers/
+routers-cpu-override/*.pt
+routers-cpu-override/**/*.pt
 .Trash-0/
 ngc-cli/
 ngc-cli.md5
