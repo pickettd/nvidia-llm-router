@@ -62,6 +62,8 @@ docker run --rm \
 
 This produces CPU-traced `.pt` files (~352MB each, vs ~702MB for GPU-traced). Pre-built CPU models are stored in `routers-cpu-override/`.
 
+**Portability note:** TorchScript `.pt` files store abstract op graphs and tensor data, not platform-specific machine code. CPU-traced models produced on x86_64 will load on ARM64 (and vice versa) — there is no need to re-trace on the Pi itself. However, the target system must have a compatible PyTorch version. The CPU models in this repo were traced with the PyTorch version bundled in `tritonserver:25.01-py3`. Large PyTorch version gaps (e.g., 1.x vs 2.x) may cause loading errors; minor version differences are generally fine.
+
 ### Triton config changes
 
 Change `KIND_GPU` to `KIND_CPU` in both model configs:
